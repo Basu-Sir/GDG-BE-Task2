@@ -1,0 +1,77 @@
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: workshop_app
+      POSTGRES_PASSWORD: local_dev_password
+      POSTGRES_DB: workshops
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workshop_app -d workshops"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  # ── Database migrations (one-shot) ────────────────────────────────
+  migrate:
+    build: .
+    command: alembic upgrade head
+    environment:
+      DATABASE_URL_SYNC: "postgresql+psycopg://workshop_app:local_dev_password@db:5432/workshops"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── Registration API ──────────────────────────────────────────────
+  api:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://workshop_app:local_dev_password@db:5432/workshops"
+      DATABASE_URL_SYNC: "postgresql+psycopg://workshop_app:local_dev_password@db:5432/workshops"
+      MOCK_NOTIFIER_URL: "http://mock-notifier:8001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Mock Notification Service ─────────────────────────────────────
+  mock-notifier:
+    build: .
+    command: uvicorn mock_notifier.main:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://workshop_app:local_dev_password@db:5432/workshops"
+      MOCK_NOTIFY_MODE: "success"
+      MOCK_NOTIFY_TIMEOUT_SECONDS: "10"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Notification Worker ───────────────────────────────────────────
+  worker:
+    build: .
+    command: python -m app.worker
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://workshop_app:local_dev_password@db:5432/workshops"
+      MOCK_NOTIFIER_URL: "http://mock-notifier:8001"
+      WORKER_POLL_SECONDS: "1"
+      WORKER_BATCH_SIZE: "10"
+      WORKER_HTTP_TIMEOUT_SECONDS: "2"
+      WORKER_LEASE_SECONDS: "15"
+      RETRY_BASE_SECONDS: "1"
+      RETRY_MAX_SECONDS: "60"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mock-notifier:
+        condition: service_started
+
+volumes:
+  pgdata:

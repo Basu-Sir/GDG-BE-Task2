@@ -1,0 +1,1 @@
+# mock_notifier package
