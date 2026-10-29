@@ -24,8 +24,10 @@ DATABASE_URL = os.getenv(
     "postgresql+asyncpg://workshop_app:local_dev_password@localhost:5432/workshops",
 )
 
-API_BASE = os.getenv("API_BASE", "http://localhost:8000")
-NOTIFIER_BASE = os.getenv("NOTIFIER_BASE", "http://localhost:8001")
+# If running inside docker container, default to service names; otherwise localhost
+_in_docker = os.path.exists("/.dockerenv")
+API_BASE = os.getenv("API_BASE", "http://api:8000" if _in_docker else "http://localhost:8000")
+NOTIFIER_BASE = os.getenv("NOTIFIER_BASE", "http://mock-notifier:8001" if _in_docker else "http://localhost:8001")
 
 
 @pytest.fixture(scope="session")

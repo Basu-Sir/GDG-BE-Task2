@@ -97,10 +97,11 @@ async def register_member(
         created_at=now,
         updated_at=now,
     )
-    db.add(delivery)
 
     # ── 4. Commit atomically ──────────────────────────────────────────
     try:
+        await db.flush()
+        db.add(delivery)
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()

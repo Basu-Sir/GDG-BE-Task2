@@ -4,7 +4,6 @@ __pycache__
 .git
 .gitignore
 docs/
-tests/
 .pytest_cache
 .mypy_cache
 GUIDELINES.md

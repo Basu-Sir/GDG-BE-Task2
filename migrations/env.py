@@ -1,7 +1,12 @@
 """Alembic env.py — supports reading DATABASE_URL_SYNC from environment."""
 
 import os
+import sys
 from logging.config import fileConfig
+from pathlib import Path
+
+# Ensure project root is on sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool

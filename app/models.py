@@ -107,6 +107,9 @@ class Registration(Base):
     )
 
     workshop: Mapped["Workshop"] = relationship(back_populates="registrations")
+    deliveries: Mapped[list["NotificationDelivery"]] = relationship(
+        back_populates="registration", cascade="all, delete-orphan"
+    )
 
 
 # ── Notification Deliveries (Transactional Outbox) ────────────────────
@@ -133,6 +136,9 @@ class NotificationDelivery(Base):
     )
     registration_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("registrations.id"), nullable=True
+    )
+    registration: Mapped["Registration | None"] = relationship(
+        back_populates="deliveries"
     )
     member_id: Mapped[str] = mapped_column(String(255), nullable=False)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
